@@ -1,0 +1,5 @@
+import os
+
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+ADMIN_ROLE_NAME = "運営"
+REMIND_BEFORE_MINUTES = 10
