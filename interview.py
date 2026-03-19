@@ -165,14 +165,21 @@ class MemberSelect(discord.ui.Select):
         )
 
         # 🔥 追加：運営ログ送信
-        log_ch = get_log_channel(interaction.guild)
-        if log_ch:
-            await log_ch.send(
-                f"📢 **予約完了ログ**\n"
-                f"👤 {member.mention}\n"
-                f"📅 {self.date_str}\n"
-                f"🕒 {self.time_str}"
-            )
+       cid = get_channel_id(interaction.guild.id, "log_channel")
+
+if cid:
+    log_ch = bot.get_channel(int(cid))
+    if log_ch:
+        await log_ch.send(
+            f"📢 **予約完了ログ**\n"
+            f"👤 {member.mention}\n"
+            f"📅 {self.date_str}\n"
+            f"🕒 {self.time_str}"
+        )
+    else:
+        print("チャンネル取得失敗")
+else:
+    print("チャンネルID未設定")
 
 class MemberView(View):
     def __init__(self, guild, date_str, time_str):
