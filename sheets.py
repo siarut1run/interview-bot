@@ -1,19 +1,22 @@
+import json
+import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-
-# ================= 接続 =================
 
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive",
 ]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(
-    "service_account.json", scope
+# 🔥ここ変更
+creds_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
+
+creds = ServiceAccountCredentials.from_json_keyfile_dict(
+    creds_dict, scope
 )
 
 client = gspread.authorize(creds)
-sheet = client.open("interview_bot").sheet1  # ←シート名合わせて
+sheet = client.open("interview_bot").sheet1
 
 # ================= 保存 =================
 
