@@ -42,7 +42,8 @@ def _open_spread(guild_id):
     sheet_id = SPREADSHEET_IDS.get(guild_id)
 
     if not sheet_id:
-        raise Exception(f"スプレッドシート未設定: {guild_id}")
+        print(f"未対応サーバー: {guild_id}")
+        return None
 
     return client.open_by_key(sheet_id)
 
@@ -69,6 +70,9 @@ def _get_log_sheet(guild_id):
 
 def _get_settings_sheet(guild_id):
     sh = _open_spread(guild_id)
+    if sh is None:
+        return None
+
     try:
         ws = sh.worksheet("Settings")
     except:
@@ -131,6 +135,9 @@ def set_notify_channel(guild_id, channel_id):
 
 def get_notify_channel(guild_id):
     ws = _get_settings_sheet(guild_id)
+    if ws is None:
+        return None
+
     data = ws.get_all_values()
     for row in data:
         if row[0] == "notify_channel":
