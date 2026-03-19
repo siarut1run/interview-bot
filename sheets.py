@@ -50,6 +50,9 @@ def _open_spread(guild_id):
 
 def _get_sheet(guild_id):
     sh = _open_spread(guild_id)
+    if sh is None:
+        return None
+
     try:
         ws = sh.worksheet("Interviews")
     except:
@@ -104,8 +107,9 @@ def is_time_conflict(guild_id, date, time_str):
 
 def save_interview(guild_id, user_id, user_name, date, time_str):
     ws = _get_sheet(guild_id)
+    if ws is None:
+        return
     ws.append_row([user_id, user_name, date, time_str])
-    save_log(guild_id, "RESERVE", user_name, f"{date} {time_str}")
 
 
 def cancel_interview(guild_id, user_id):
@@ -120,6 +124,8 @@ def cancel_interview(guild_id, user_id):
 
 def list_interviews(guild_id):
     ws = _get_sheet(guild_id)
+    if ws is None:
+        return []
     return ws.get_all_values()[1:]
 
 
