@@ -148,10 +148,12 @@ class MemberSelect(discord.ui.Select):
         uid = self.values[0]
         member = interaction.guild.get_member(int(uid))
 
+        # 予約重複チェック
         if is_time_conflict(interaction.guild.id, self.date_str, self.time_str):
             await interaction.followup.send("❌ その時間は予約済み")
             return
 
+        # 予約保存
         save_interview(
             interaction.guild.id,
             uid,
@@ -160,31 +162,27 @@ class MemberSelect(discord.ui.Select):
             self.time_str
         )
 
+        # ================= 🔥 運営ログ送信 =================
+        cid = get_channel_id(interaction.guild.id, "log_channel")
+
+        if cid:
+            log_ch = bot.get_channel(int(cid))
+            if log_ch:
+                await log_ch.send(
+                    f"📢 **予約完了ログ**\n"
+                    f"👤 {member.mention}\n"
+                    f"📅 {self.date_str}\n"
+                    f"🕒 {self.time_str}"
+                )
+            else:
+                print("チャンネル取得失敗")
+        else:
+            print("ログチャンネル未設定")
+
+        # ================= ユーザー通知 =================
         await interaction.followup.send(
             f"✅ 予約完了\n📅 {self.date_str}\n🕒 {self.time_str}\n👤 {member.mention}"
         )
-
-        # 🔥 追加：運営ログ送信
-       cid = get_channel_id(interaction.guild.id, "log_channel")
-
-if cid:
-    log_ch = bot.get_channel(int(cid))
-    if log_ch:
-        await log_ch.send(
-            f"📢 **予約完了ログ**\n"
-            f"👤 {member.mention}\n"
-            f"📅 {self.date_str}\n"
-            f"🕒 {self.time_str}"
-        )
-    else:
-        print("チャンネル取得失敗")
-else:
-    print("チャンネルID未設定")
-
-class MemberView(View):
-    def __init__(self, guild, date_str, time_str):
-        super().__init__(timeout=180)
-        self.add_item(MemberSelect(guild, date_str, time_str))
 
 # ================= キャンセル =================
 
