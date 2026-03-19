@@ -172,7 +172,7 @@ def get_notify_channel(guild_id):
     data = ws.get_all_values()
     for row in data:
         if row[0] == "notify_channel":
-            return int(row[1])
+            return int(flouat(row[1]))
     return None
 
 
