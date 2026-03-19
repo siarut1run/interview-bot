@@ -20,7 +20,6 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 # ================= サーバーごとのシートID =================
-# 🔥 ここに追加していく（guild.idベースで最強安定）
 
 SPREADSHEET_IDS = {
     1386159891835523183: "1bcdgi3qx7w_N_cLk8WIGRgxUs36zbRp8dXvIedg2Pw0",
@@ -34,8 +33,6 @@ SPREADSHEET_IDS = {
     1479735252636405875: "11S_0clxAT1xq2cfNOajsGynXstosFTYlWevpeoHq5SA",
 }
 
-
-  
 # ================= 共通 =================
 
 def _open_spread(guild_id):
@@ -45,7 +42,11 @@ def _open_spread(guild_id):
         print(f"未対応サーバー: {guild_id}")
         return None
 
-    return client.open_by_key(sheet_id)
+    try:
+        return client.open_by_key(sheet_id)
+    except Exception as e:
+        print(f"スプレッドシート取得失敗: {guild_id} / {e}")
+        return None
 
 
 def _get_sheet(guild_id):
@@ -63,6 +64,9 @@ def _get_sheet(guild_id):
 
 def _get_log_sheet(guild_id):
     sh = _open_spread(guild_id)
+    if sh is None:
+        return None
+
     try:
         ws = sh.worksheet("Logs")
     except:
@@ -88,6 +92,9 @@ def _get_settings_sheet(guild_id):
 
 def save_log(guild_id, action, user, detail):
     ws = _get_log_sheet(guild_id)
+    if ws is None:
+        return
+
     ws.append_row([
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         action,
@@ -98,6 +105,9 @@ def save_log(guild_id, action, user, detail):
 
 def is_time_conflict(guild_id, date, time_str):
     ws = _get_sheet(guild_id)
+    if ws is None:
+        return False
+
     rows = ws.get_all_values()[1:]
     for r in rows:
         if r[2] == date and r[3] == time_str:
@@ -109,12 +119,21 @@ def save_interview(guild_id, user_id, user_name, date, time_str):
     ws = _get_sheet(guild_id)
     if ws is None:
         return
+
     ws.append_row([user_id, user_name, date, time_str])
+    save_log(guild_id, "RESERVE", user_name, f"{date} {time_str}")
 
 
 def cancel_interview(guild_id, user_id):
     ws = _get_sheet(guild_id)
-    cell = ws.find(user_id)
+    if ws is None:
+        return False
+
+    try:
+        cell = ws.find(user_id)
+    except:
+        return False
+
     if cell:
         ws.delete_rows(cell.row)
         save_log(guild_id, "CANCEL", user_id, "Interview cancelled")
@@ -129,13 +148,19 @@ def list_interviews(guild_id):
     return ws.get_all_values()[1:]
 
 
+# ================= 通知チャンネル（旧） =================
+
 def set_notify_channel(guild_id, channel_id):
     ws = _get_settings_sheet(guild_id)
+    if ws is None:
+        return
+
     data = ws.get_all_values()
     for i, row in enumerate(data):
         if row[0] == "notify_channel":
             ws.update_cell(i + 1, 2, channel_id)
             return
+
     ws.append_row(["notify_channel", channel_id])
 
 
@@ -147,5 +172,33 @@ def get_notify_channel(guild_id):
     data = ws.get_all_values()
     for row in data:
         if row[0] == "notify_channel":
+            return int(row[1])
+    return None
+
+
+# ================= 🔥 チャンネル分離（新） =================
+
+def set_channel(guild_id, key, channel_id):
+    ws = _get_settings_sheet(guild_id)
+    if ws is None:
+        return
+
+    data = ws.get_all_values()
+    for i, row in enumerate(data):
+        if row[0] == key:
+            ws.update_cell(i + 1, 2, channel_id)
+            return
+
+    ws.append_row([key, channel_id])
+
+
+def get_channel_id(guild_id, key):
+    ws = _get_settings_sheet(guild_id)
+    if ws is None:
+        return None
+
+    data = ws.get_all_values()
+    for row in data:
+        if row[0] == key:
             return int(row[1])
     return None

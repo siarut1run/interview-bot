@@ -11,6 +11,9 @@ from sheets import (
     is_time_conflict,
     set_notify_channel,
     get_notify_channel,
+    # ↓ 追加
+    set_channel,
+    get_channel_id,
 )
 
 intents = discord.Intents.default()
@@ -28,12 +31,30 @@ def get_notify_channel_obj(guild):
             return ch
     return guild.system_channel
 
+# ================= 🔥 追加：チャンネル分離 =================
+
+def get_log_channel(guild):
+    cid = get_channel_id(guild.id, "log_channel")
+    if cid:
+        ch = guild.get_channel(int(cid))
+        if ch:
+            return ch
+    return None
+
+def get_interview_channel(guild):
+    cid = get_channel_id(guild.id, "interview_channel")
+    if cid:
+        ch = guild.get_channel(int(cid))
+        if ch:
+            return ch
+    return None
+
 # ================= 日付入力 =================
 
 class DateInputModal(Modal, title="日付入力"):
     year = TextInput(label="年 (例: 2026)")
-    month = TextInput(label="月 (例: 3)")
-    day = TextInput(label="日 (例: 21)")
+    month = TextInput(label="月 (例: 1)")
+    day = TextInput(label="日 (例: 1)")
 
     async def on_submit(self, interaction: discord.Interaction):
         date_str = f"{self.year.value}-{int(self.month.value):02}-{int(self.day.value):02}"
@@ -69,7 +90,6 @@ class PeriodView(View):
 
 # ================= 時間選択 =================
 
-
 class TimeSelect(discord.ui.Select):
     def __init__(self, period, guild, date_str):
         self.guild = guild
@@ -102,13 +122,10 @@ class TimeSelect(discord.ui.Select):
             ephemeral=True
         )
 
-# ================= 時間ビュー（←★これを追加） =================
-
 class TimeView(View):
     def __init__(self, guild, date_str, period):
         super().__init__(timeout=180)
         self.add_item(TimeSelect(period, guild, date_str))
-
 
 # ================= 面接者選択 =================
 
@@ -147,12 +164,20 @@ class MemberSelect(discord.ui.Select):
             f"✅ 予約完了\n📅 {self.date_str}\n🕒 {self.time_str}\n👤 {member.mention}"
         )
 
+        # 🔥 追加：運営ログ送信
+        log_ch = get_log_channel(interaction.guild)
+        if log_ch:
+            await log_ch.send(
+                f"📢 **予約完了ログ**\n"
+                f"👤 {member.mention}\n"
+                f"📅 {self.date_str}\n"
+                f"🕒 {self.time_str}"
+            )
 
 class MemberView(View):
     def __init__(self, guild, date_str, time_str):
         super().__init__(timeout=180)
         self.add_item(MemberSelect(guild, date_str, time_str))
-
 
 # ================= キャンセル =================
 
@@ -201,7 +226,8 @@ async def reminder_loop():
     now = datetime.now()
 
     for guild in bot.guilds:
-        ch = get_notify_channel_obj(guild)
+        ch = get_interview_channel(guild)  # 🔥 変更
+
         if not ch:
             continue
 
@@ -211,13 +237,11 @@ async def reminder_loop():
             reserve_id = f"{guild.id}_{r[0]}_{r[2]}_{r[3]}"
             dt = datetime.strptime(r[2] + " " + r[3], "%Y-%m-%d %H:%M")
 
-            # ===== 10分前通知 =====
             if dt - timedelta(minutes=REMIND_BEFORE_MINUTES) <= now < dt:
                 if reserve_id + "_before" not in notified_reserves:
                     await ch.send(f"🔔 面接{REMIND_BEFORE_MINUTES}分前 <@{r[0]}>")
                     notified_reserves.add(reserve_id + "_before")
 
-            # ===== 開始通知 =====
             if dt <= now < dt + timedelta(minutes=1):
                 if reserve_id + "_start" not in notified_reserves:
                     await ch.send(f"⏰ 面接開始 <@{r[0]}>")
@@ -228,10 +252,8 @@ async def reminder_loop():
 @bot.event
 async def on_ready():
     print(f"起動完了: {bot.user}")
-
-    await bot.change_presence(
-        activity=discord.Game(name="面接管理中")
-    )
+    await bot.change_presence(activity=discord.Game(name="面接管理中"))
+    reminder_loop.start()  # ← 忘れがち🔥
 
 # ================= コマンド =================
 
@@ -246,10 +268,22 @@ async def setnotify(ctx, channel: discord.TextChannel):
     set_notify_channel(ctx.guild.id, str(channel.id))
     await ctx.send(f"✅ 通知チャンネルを {channel.mention} に設定しました")
 
+# 🔥 追加コマンド
+
+@bot.command()
+@commands.has_role(ADMIN_ROLE_NAME)
+async def ログ設定(ctx):
+    set_channel(ctx.guild.id, "log_channel", ctx.channel.id)
+    await ctx.send("✅ このチャンネルを【運営ログ用】に設定しました")
+
+@bot.command()
+@commands.has_role(ADMIN_ROLE_NAME)
+async def 面接通知設定(ctx):
+    set_channel(ctx.guild.id, "interview_channel", ctx.channel.id)
+    await ctx.send("✅ このチャンネルを【面接通知用】に設定しました")
+
+# ================= 起動 =================
+
 import os
-from config import ADMIN_ROLE_NAME, REMIND_BEFORE_MINUTES
-
 TOKEN = os.getenv("DISCORD_TOKEN")
-
-# 最後
 bot.run(TOKEN)
