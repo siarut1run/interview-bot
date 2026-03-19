@@ -184,6 +184,14 @@ class MemberSelect(discord.ui.Select):
             f"✅ 予約完了\n📅 {self.date_str}\n🕒 {self.time_str}\n👤 {member.mention}"
         )
 
+
+class MemberView(View):
+    def __init__(self, guild, date_str, time_str):
+        super().__init__(timeout=180)
+        self.add_item(MemberSelect(guild, date_str, time_str))
+
+
+
 # ================= キャンセル =================
 
 class CancelModal(Modal, title="面接キャンセル"):
