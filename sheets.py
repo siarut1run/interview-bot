@@ -129,10 +129,16 @@ def cancel_interview(guild_id, user_id):
     if ws is None:
         return False
 
-    try:
-        cell = ws.find(user_id)
-    except:
-        return False
+    rows = ws.get_all_values()
+
+    for i, row in enumerate(rows):
+        # row[0] = UserID
+        if str(row[0]) == str(user_id):
+            ws.delete_rows(i + 1)  # +1はヘッダー分
+            save_log(guild_id, "CANCEL", user_id, "Interview cancelled")
+            return True
+
+    return False
 
     if cell:
         ws.delete_rows(cell.row)
