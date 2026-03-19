@@ -21,7 +21,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # ================= 通知チャンネル =================
 
 def get_notify_channel_obj(guild):
-    cid = get_notify_channel(guild.name)
+    cid = get_notify_channel(guild.id)
     if cid:
         ch = guild.get_channel(int(cid))
         if ch:
@@ -131,12 +131,12 @@ class MemberSelect(discord.ui.Select):
         uid = self.values[0]
         member = interaction.guild.get_member(int(uid))
 
-        if is_time_conflict(interaction.guild.name, self.date_str, self.time_str):
+        if is_time_conflict(interaction.guild.id, self.date_str, self.time_str):
             await interaction.followup.send("❌ その時間は予約済み")
             return
 
         save_interview(
-            interaction.guild.name,
+            interaction.guild.id,
             uid,
             member.display_name,
             self.date_str,
@@ -162,7 +162,7 @@ class CancelModal(Modal, title="面接キャンセル"):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
-        ok = cancel_interview(interaction.guild.name, str(self.user_id.value))
+        ok = cancel_interview(interaction.guild.id, str(self.user_id.value))
 
         if ok:
             await interaction.followup.send("✅ キャンセル完了")
@@ -185,7 +185,7 @@ class MainPanel(View):
 
     @discord.ui.button(label="一覧", style=discord.ButtonStyle.blurple, custom_id="list_btn")
     async def show_list(self, interaction: discord.Interaction, button: Button):
-        data = list_interviews(interaction.guild.name)
+        data = list_interviews(interaction.guild.id)
         if not data:
             msg = "予約はありません"
         else:
@@ -205,7 +205,7 @@ async def reminder_loop():
         if not ch:
             continue
 
-        data = list_interviews(guild.name)
+        data = list_interviews(guild.id)
 
         for r in data:
             reserve_id = f"{guild.id}_{r[0]}_{r[2]}_{r[3]}"
@@ -241,7 +241,7 @@ async def panel(ctx):
 @bot.command()
 @commands.has_role(ADMIN_ROLE_NAME)
 async def setnotify(ctx, channel: discord.TextChannel):
-    set_notify_channel(ctx.guild.name, str(channel.id))
+    set_notify_channel(ctx.guild.id, str(channel.id))
     await ctx.send(f"✅ 通知チャンネルを {channel.mention} に設定しました")
 
 import os
