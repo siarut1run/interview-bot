@@ -227,9 +227,11 @@ async def reminder_loop():
 
 @bot.event
 async def on_ready():
-    bot.add_view(MainPanel())
-    reminder_loop.start()
     print(f"起動完了: {bot.user}")
+
+    await bot.change_presence(
+        activity=discord.Game(name="面接管理中")
+    )
 
 # ================= コマンド =================
 
